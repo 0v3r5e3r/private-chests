@@ -1,0 +1,35 @@
+{
+	"schemaVersion": 1,
+	"id": "private-chests",
+	"version": "${version}",
+	"name": "Private Chests",
+	"description": "Server-side chest and barrel protection using wall signs with [private] markers. Supports single/double chests and barrels with owner-based access control.",
+	"authors": [
+		"SimpleForAPanda"
+	],
+	"contact": {
+		"sources": "https://github.com/joelra/private-chests"
+	},
+	"license": "LGPL-3.0",
+	"icon": "assets/private-chests/icon.png",
+	"environment": "server",
+	"entrypoints": {
+		"main": [
+			"com.simpleforapanda.privatechests.PrivateChests"
+		]
+	},
+	"mixins": [
+		"private-chests.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.18.4",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"custom": {
+		"modmenu": {
+			"badges": ["server"]
+		}
+	}
+}
