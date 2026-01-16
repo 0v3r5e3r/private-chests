@@ -1,11 +1,14 @@
 package com.simpleforapanda.privatechests.mixin;
 
+import com.simpleforapanda.privatechests.PrivateChests;
 import com.simpleforapanda.privatechests.service.SignEditService;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.FilteredText;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,38 +18,51 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
+import java.util.List;
+
 /**
  * Mixin to intercept sign editing and handle [private] lock creation/updates.
  */
-@Mixin(ServerGamePacketListenerImpl.class)
+@Mixin(SignBlockEntity.class)
 public abstract class SignEditMixin {
 
-    @Shadow
-    public abstract ServerPlayer getPlayer();
-
     /**
-     * Inject into the sign update handler to process [private] locks.
-     * Captures local variables and casts BlockEntity to SignBlockEntity.
+     * PLAYER-ORIGINATED sign edits
+     * This replaces ServerGamePacketListenerImpl interception
      */
     @Inject(
-        method = "updateSignText",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/world/level/block/entity/SignBlockEntity;updateSignText(Lnet/minecraft/world/entity/player/Player;ZLjava/util/List;)V",
-            shift = At.Shift.BEFORE
-        ),
-        locals = LocalCapture.CAPTURE_FAILHARD,
-        cancellable = true
+            method = "updateSignText",
+            at = @At("HEAD"),
+            cancellable = true
     )
-    private void onSignUpdate(ServerboundSignUpdatePacket packet, java.util.List<net.minecraft.server.network.FilteredText> filteredLines, CallbackInfo ci,
-                              ServerLevel level, BlockPos pos, BlockEntity blockEntity, SignBlockEntity signEntity) {
-        ServerPlayer player = this.getPlayer();
+    private void onPlayerSignEdit(
+            Player player,
+            boolean bl,
+            List<FilteredText> list,
+            CallbackInfo ci
+    ) {
+        // Only enforce for real server players
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
 
-        // Pass the new text lines AND which side is being edited to SignEditService
-        boolean isFrontText = packet.isFrontText();
-        boolean allowed = SignEditService.handleSignEdit(player, pos, signEntity, filteredLines, isFrontText);
+        SignBlockEntity sign = (SignBlockEntity) (Object) this;
+        BlockPos pos = sign.getBlockPos();
 
-        // Cancel the sign update if not allowed
+        // In this method signature:
+        //  - `bl` == isFrontText
+        //  - `list` == filteredLines
+        boolean isFrontText = bl;
+        List<FilteredText> filteredLines = list;
+
+        boolean allowed = SignEditService.handleSignEdit(
+                serverPlayer,
+                pos,
+                sign,
+                filteredLines,
+                isFrontText
+        );
+
         if (!allowed) {
             ci.cancel();
         }
