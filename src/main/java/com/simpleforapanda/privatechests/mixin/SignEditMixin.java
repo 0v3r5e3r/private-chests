@@ -25,11 +25,7 @@ import java.util.List;
  */
 @Mixin(SignBlockEntity.class)
 public abstract class SignEditMixin {
-
-    /**
-     * PLAYER-ORIGINATED sign edits
-     * This replaces ServerGamePacketListenerImpl interception
-     */
+    
     @Inject(
             method = "updateSignText",
             at = @At("HEAD"),
@@ -41,29 +37,26 @@ public abstract class SignEditMixin {
             List<FilteredText> list,
             CallbackInfo ci
     ) {
-        // Only enforce for real server players
+        // check if the sign is being edited by an actual player
         if (!(player instanceof ServerPlayer serverPlayer)) {
             return;
         }
 
+        // Get the entity and position
         SignBlockEntity sign = (SignBlockEntity) (Object) this;
         BlockPos pos = sign.getBlockPos();
 
-        // In this method signature:
-        //  - `bl` == isFrontText
-        //  - `list` == filteredLines
-        boolean isFrontText = bl;
-        List<FilteredText> filteredLines = list;
-
+        // can we edit?
         boolean allowed = SignEditService.handleSignEdit(
                 serverPlayer,
                 pos,
                 sign,
-                filteredLines,
-                isFrontText
+                list,
+                bl
         );
 
         if (!allowed) {
+            // no we can't!
             ci.cancel();
         }
     }
